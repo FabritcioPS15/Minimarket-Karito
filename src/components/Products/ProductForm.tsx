@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Product } from '../../types';
-import { ArrowLeft, Package, Save, Calculator } from 'lucide-react';
+import { ArrowLeft, Package, Save, Calculator, Image, Eye } from 'lucide-react';
 
 interface ProductFormProps {
   product?: Product | null;
@@ -22,9 +22,11 @@ export function ProductForm({ product, onClose }: ProductFormProps) {
     minStock: '',
     maxStock: '',
     expirationDate: '',
+    imageUrl: '', // Nuevo campo para la URL de la imagen
   });
 
   const [profitPercentage, setProfitPercentage] = useState(0);
+  const [showImagePreview, setShowImagePreview] = useState(false);
 
   useEffect(() => {
     if (product) {
@@ -40,6 +42,7 @@ export function ProductForm({ product, onClose }: ProductFormProps) {
         minStock: product.minStock.toString(),
         maxStock: product.maxStock.toString(),
         expirationDate: product.expirationDate || '',
+        imageUrl: product.imageUrl || '', // Incluir la URL de la imagen si existe
       });
       setProfitPercentage(product.profitPercentage);
     }
@@ -82,6 +85,7 @@ export function ProductForm({ product, onClose }: ProductFormProps) {
       minStock: parseInt(formData.minStock),
       maxStock: parseInt(formData.maxStock),
       expirationDate: formData.expirationDate || undefined,
+      imageUrl: formData.imageUrl || undefined, // Incluir la URL de la imagen
       createdAt: product?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -203,6 +207,35 @@ export function ProductForm({ product, onClose }: ProductFormProps) {
                     placeholder="Marca del producto"
                   />
                 </div>
+              </div>
+
+              {/* Nuevo campo para URL de imagen */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  URL de Imagen
+                </label>
+                <div className="flex space-x-2">
+                  <input
+                    type="url"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    value={formData.imageUrl}
+                    onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
+                    placeholder="https://ejemplo.com/imagen.jpg"
+                  />
+                  {formData.imageUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setShowImagePreview(true)}
+                      className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                      title="Vista previa de la imagen"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Ingresa la URL de una imagen para el producto (opcional)
+                </p>
               </div>
             </div>
 
@@ -342,6 +375,33 @@ export function ProductForm({ product, onClose }: ProductFormProps) {
           </div>
         </form>
       </div>
+
+      {/* Modal de vista previa de imagen */}
+      {showImagePreview && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Vista previa de la imagen</h3>
+            <div className="flex justify-center mb-4">
+              <img 
+                src={formData.imageUrl} 
+                alt="Vista previa" 
+                className="max-h-64 max-w-full object-contain rounded-lg"
+                onError={(e) => {
+                  e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0xOCAxNUwxMiA5TDYgMTUiIHN0cm9rZT0iIzlDQTBCMyIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KPC9zdmc+';
+                }}
+              />
+            </div>
+            <div className="flex justify-end">
+              <button
+                onClick={() => setShowImagePreview(false)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

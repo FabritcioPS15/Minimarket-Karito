@@ -29,6 +29,32 @@ export function CashModule() {
     });
   };
 
+  // Función para formatear la duración en horas, minutos y segundos
+  const formatDuration = (startTime: string, endTime?: string) => {
+    const start = new Date(startTime).getTime();
+    const end = endTime ? new Date(endTime).getTime() : Date.now();
+    const durationMs = end - start;
+    
+    const hours = Math.floor(durationMs / (1000 * 60 * 60));
+    const minutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((durationMs % (1000 * 60)) / 1000);
+    
+    if (hours > 0) {
+      return `${hours}h ${minutes}m ${seconds}s`;
+    } else if (minutes > 0) {
+      return `${minutes}m ${seconds}s`;
+    } else {
+      return `${seconds}s`;
+    }
+  };
+
+  // Función para obtener duración en segundos (para ordenamiento)
+  const getDurationInSeconds = (startTime: string, endTime?: string) => {
+    const start = new Date(startTime).getTime();
+    const end = endTime ? new Date(endTime).getTime() : Date.now();
+    return Math.floor((end - start) / 1000);
+  };
+
   // Ventas de la sesión actual
   const sessionSales = currentCashSession ? getSessionSales(currentCashSession) : [];
   const cashSales = sessionSales.filter(sale => sale.paymentMethod === 'cash');
@@ -162,6 +188,11 @@ export function CashModule() {
             <p className="text-sm text-gray-600">
               Total de ventas realizadas: <span className="font-semibold">{sessionSales.length}</span>
             </p>
+            <p className="text-sm text-gray-600 mt-1">
+              Duración de la sesión: <span className="font-semibold">
+                {currentCashSession && formatDuration(currentCashSession.startTime)}
+              </span>
+            </p>
           </div>
         </div>
 
@@ -225,6 +256,9 @@ export function CashModule() {
                   Iniciada el {new Date(currentCashSession.startTime).toLocaleDateString('es-ES')} 
                   a las {new Date(currentCashSession.startTime).toLocaleTimeString('es-ES')}
                 </p>
+                <p className="text-green-600 text-sm mt-1">
+                  Duración: {formatDuration(currentCashSession.startTime)}
+                </p>
               </div>
             </div>
             <div className="text-right">
@@ -285,7 +319,7 @@ export function CashModule() {
               <div>
                 <p className="text-sm font-medium text-gray-600">Duración</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {Math.floor((Date.now() - new Date(currentCashSession.startTime).getTime()) / (1000 * 60 * 60))}h
+                  {formatDuration(currentCashSession.startTime)}
                 </p>
               </div>
               <Clock className="h-8 w-8 text-orange-600" />
@@ -363,9 +397,6 @@ export function CashModule() {
                 .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime())
                 .slice(0, 10)
                 .map(session => {
-                  const duration = session.endTime ? 
-                    Math.floor((new Date(session.endTime).getTime() - new Date(session.startTime).getTime()) / (1000 * 60 * 60)) : 0;
-                  
                   // Para sesiones antiguas que no tienen totalSales, calcularlo
                   const sessionTotalSales = session.totalSales > 0 ? 
                     session.totalSales : 
@@ -391,7 +422,7 @@ export function CashModule() {
                         S/ {sessionTotalSales.toFixed(2)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {duration}h
+                        {formatDuration(session.startTime, session.endTime)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">

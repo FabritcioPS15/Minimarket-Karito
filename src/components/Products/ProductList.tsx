@@ -12,7 +12,8 @@ import {
   AlertTriangle,
   Scan,
   Filter,
-  Eye
+  Eye,
+  Image
 } from 'lucide-react';
 
 export function ProductList() {
@@ -24,6 +25,7 @@ export function ProductList() {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [stockFilter, setStockFilter] = useState<'all' | 'low' | 'normal' | 'high'>('all');
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   const categories = [...new Set(products.map(p => p.category))];
 
@@ -221,10 +223,34 @@ export function ProductList() {
                     <tr key={product.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
-                          <Package className="h-8 w-8 text-gray-400 mr-3" />
+                          {product.imageUrl ? (
+                            <div className="relative">
+                              <img 
+                                src={product.imageUrl} 
+                                alt={product.name}
+                                className="h-10 w-10 rounded-md object-cover mr-3"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                  e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                                }}
+                              />
+                              <Package className="h-8 w-8 text-gray-400 mr-3 hidden" />
+                            </div>
+                          ) : (
+                            <Package className="h-8 w-8 text-gray-400 mr-3" />
+                          )}
                           <div>
                             <div className="text-sm font-medium text-gray-900">{product.name}</div>
                             <div className="text-sm text-gray-500">{product.brand}</div>
+                            {product.imageUrl && (
+                              <button
+                                onClick={() => setImagePreview(product.imageUrl!)}
+                                className="text-xs text-blue-600 hover:text-blue-800 mt-1 flex items-center"
+                              >
+                                <Eye className="h-3 w-3 mr-1" />
+                                Ver imagen
+                              </button>
+                            )}
                           </div>
                         </div>
                       </td>
@@ -319,6 +345,33 @@ export function ProductList() {
           </table>
         </div>
       </div>
+
+      {/* Modal de vista previa de imagen */}
+      {imagePreview && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Vista previa de la imagen</h3>
+            <div className="flex justify-center mb-4">
+              <img 
+                src={imagePreview} 
+                alt="Vista previa" 
+                className="max-h-64 max-w-full object-contain rounded-lg"
+                onError={(e) => {
+                  e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0xOCAxNUwxMiA5TDYgMTUiIHN0cm9rZT0iIzlDQTBCMyIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KPC9zdmc+';
+                }}
+              />
+            </div>
+            <div className="flex justify-end">
+              <button
+                onClick={() => setImagePreview(null)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

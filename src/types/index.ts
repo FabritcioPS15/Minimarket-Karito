@@ -12,6 +12,7 @@ export interface Product {
   minStock: number;
   maxStock: number;
   expirationDate?: string;
+  imageUrl?: string; // Campo agregado para URLs de imágenes
   createdAt: string;
   updatedAt: string;
 }
