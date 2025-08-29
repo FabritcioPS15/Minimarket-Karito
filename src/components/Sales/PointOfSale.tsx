@@ -351,8 +351,8 @@ export function PointOfSale() {
           </div>
         </div>
         
-        <div className="p-3 max-h-96 overflow-y-auto">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+        <div className="p-4 max-h-96 overflow-y-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
             {filteredProducts.slice(0, 24).map(product => (
               <button
                 key={product.id}
@@ -364,56 +364,65 @@ export function PointOfSale() {
                 }`}
                 disabled={product.currentStock <= 0}
               >
-                <div className="flex flex-col items-center text-center">
-                  {product.imageUrl ? (
-                    <div className="relative mb-2">
-                      <img 
-                        src={product.imageUrl} 
-                        alt={product.name}
-                        className="h-14 w-14 object-cover rounded-md mx-auto"
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none';
-                          e.currentTarget.nextElementSibling?.classList.remove('hidden');
-                        }}
-                      />
-                      <div className="h-14 w-14 bg-gray-100 rounded-md flex items-center justify-center hidden mx-auto">
+                <div className="flex items-start space-x-3">
+                  {/* Columna izquierda - Imagen */}
+                  <div className="flex flex-col items-center">
+                    {product.imageUrl ? (
+                      <div className="relative mb-2">
+                        <img 
+                          src={product.imageUrl} 
+                          alt={product.name}
+                          className="h-20 w-20 object-cover rounded-md"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                            e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                          }}
+                        />
+                        <div className="h-14 w-14 bg-gray-100 rounded-md flex items-center justify-center hidden">
+                          <Package className="h-7 w-7 text-gray-400" />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="h-14 w-14 bg-gray-100 rounded-md flex items-center justify-center mb-2">
                         <Package className="h-7 w-7 text-gray-400" />
                       </div>
-                    </div>
-                  ) : (
-                    <div className="h-14 w-14 bg-gray-100 rounded-md flex items-center justify-center mb-2 mx-auto">
-                      <Package className="h-7 w-7 text-gray-400" />
-                    </div>
-                  )}
-                  
-                  <h4 className="font-medium text-gray-900 text-sm mb-1 line-clamp-2">
-                    {product.name}
-                  </h4>
-                  <p className="text-xs text-gray-500 mb-1">{product.code}</p>
-                  <p className="text-sm font-semibold text-blue-600 mb-2">
-                    S/ {product.salePrice.toFixed(2)}
-                  </p>
-                  
-                  <div className="flex items-center justify-center space-x-1">
-                    <span className="text-xs text-gray-500">Stock:</span>
-                    <span className={`text-xs font-medium ${getStockColor(product)}`}>
-                      {product.currentStock}
-                    </span>
+                    )}
+                    
+                    {product.imageUrl && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setImagePreview(product.imageUrl!);
+                        }}
+                        className="text-xs text-blue-600 hover:text-blue-800 flex items-center"
+                        title="Ver imagen"
+                      >
+                        <Eye className="h-3 w-3 mr-1" />
+                        Ver
+                      </button>
+                    )}
                   </div>
 
-                  {product.imageUrl && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setImagePreview(product.imageUrl!);
-                      }}
-                      className="text-xs text-blue-600 hover:text-blue-800 flex items-center justify-center mt-1 mx-auto"
-                      title="Ver imagen"
-                    >
-                      <Eye className="h-3 w-3 mr-1" />
-                      Ver imagen
-                    </button>
-                  )}
+                  {/* Columna derecha - Información */}
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-medium text-gray-900 text-[18px] mb-1 line-clamp-2">
+                      {product.name}
+                    </h4>
+                    <p className="text-[10px] text-gray-500 mb-1">{product.code}</p>
+                    
+                    <div className="mb-2">
+                      <p className="text-[20px] font-semibold text-blue-600">
+                        S/ {product.salePrice.toFixed(2)}
+                      </p>
+                    </div>
+                    
+                    <div className="flex items-center space-x-1">
+                      <span className="text-xs text-gray-500">Stock:</span>
+                      <span className={`text-xs font-medium ${getStockColor(product)}`}>
+                        {product.currentStock}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </button>
             ))}
@@ -609,7 +618,7 @@ export function PointOfSale() {
                 alt="Vista previa" 
                 className="max-h-64 max-w-full object-contain rounded-lg"
                 onError={(e) => {
-                  e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0xOCAxNUwxMiA5TDYgMTUiIHN0cm9rZT0iIzlDQTBCMyIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KPC9zdmc+';
+                  e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qwd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0xOCAxNUwxMiA5TDYgMTUiIHN0cm9rZT0iIzlDQTBCMyIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KPC9zdmc+';
                 }}
               />
             </div>
