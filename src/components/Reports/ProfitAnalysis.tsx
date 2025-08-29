@@ -8,8 +8,6 @@ import {
   CartesianGrid, 
   Tooltip, 
   ResponsiveContainer,
-  BarChart,
-  Bar
 } from 'recharts';
 import { TrendingUp, DollarSign, Percent, Calculator } from 'lucide-react';
 
@@ -34,16 +32,18 @@ export function ProfitAnalysis() {
       sale.items.forEach(item => {
         const product = products.find(p => p.id === item.productId);
         if (product) {
-          const profit = (item.unitPrice - product.costPrice) * item.quantity;
-          const existing = productProfits.get(item.productId) || {
-            name: item.productName,
-            totalProfit: 0,
-            unitsSold: 0,
-            avgProfit: 0,
-            profitMargin: 0,
-            costPrice: product.costPrice,
-            salePrice: product.salePrice,
-          };
+        const price = item.price ?? item.unitPrice ?? product.salePrice ?? 0;
+        const name = item.name ?? item.productName ?? product.name ?? 'Producto';
+        const profit = (price - product.costPrice) * item.quantity;
+        const existing = productProfits.get(item.productId) || {
+  name,
+  totalProfit: 0,
+  unitsSold: 0,
+  avgProfit: 0,
+  profitMargin: 0,
+  costPrice: product.costPrice,
+  salePrice: product.salePrice,
+};
           
           productProfits.set(item.productId, {
             ...existing,
@@ -79,7 +79,7 @@ export function ProfitAnalysis() {
 
       const saleProfit = sale.items.reduce((sum, item) => {
         const product = products.find(p => p.id === item.productId);
-        return sum + (product ? (item.unitPrice - product.costPrice) * item.quantity : 0);
+        return sum + (product ? ((item.price ?? item.unitPrice ?? product.salePrice ?? 0) - product.costPrice) * item.quantity : 0);
       }, 0);
 
       profitByPeriod.set(key, (profitByPeriod.get(key) || 0) + saleProfit);
@@ -309,6 +309,19 @@ export function ProfitAnalysis() {
                       {((product.salePrice - product.costPrice) / product.costPrice * 100).toFixed(1)}%
                     </span>
                   </td>
+                </tr>
+              ))}
+              {/* Mostrar productos sin ventas */}
+              {products.filter(p => !profitData.topProducts.some(tp => tp.id === p.id)).map(p => (
+                <tr key={p.id} className="hover:bg-gray-50 bg-gray-100">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-gray-400">{p.name}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">0</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">S/ 0.00</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">S/ 0.00</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">0%</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">0%</td>
                 </tr>
               ))}
             </tbody>

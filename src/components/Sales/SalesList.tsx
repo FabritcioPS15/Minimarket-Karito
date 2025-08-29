@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Sale } from '../../types';
+import html2pdf from 'html2pdf.js';
 import { 
   Receipt, 
   Search, 
-  Filter, 
   Eye, 
   Download,
-  Calendar,
-  DollarSign
+  DollarSign,
+  Printer // Agrega el ícono de impresora
 } from 'lucide-react';
+import { PrintableInvoice } from './PrintableInvoice'; // Importa el comprobante
 
 export function SalesList() {
   const { state } = useApp();
@@ -17,6 +18,11 @@ export function SalesList() {
   const [searchTerm, setSearchTerm] = useState('');
   const [dateFilter, setDateFilter] = useState('all');
   const [paymentFilter, setPaymentFilter] = useState('all');
+  const [printModalOpen, setPrintModalOpen] = useState(false);
+  const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
+  const [invoiceType, setInvoiceType] = useState<'boleta' | 'factura'>('boleta');
+  const printRef = React.useRef<HTMLDivElement>(null);
 
   const getFilteredSales = () => {
     let filtered = sales;
@@ -64,6 +70,43 @@ export function SalesList() {
 
   const filteredSales = getFilteredSales();
   const totalAmount = filteredSales.reduce((sum, sale) => sum + sale.total, 0);
+
+  const handlePrintClick = (sale: Sale) => {
+    setSelectedSale(sale);
+    setPrintModalOpen(true);
+  };
+
+  const handleViewClick = (sale: Sale) => {
+    setSelectedSale(sale);
+    setViewModalOpen(true);
+  };
+
+  const handlePrint = () => {
+    if (printRef.current) {
+      const printContents = printRef.current.innerHTML;
+      const win = window.open('', '', 'width=400,height=600');
+      win?.document.write(`<html><head><title>Imprimir</title></head><body>${printContents}</body></html>`);
+      win?.document.close();
+      win?.focus();
+      win?.print();
+      win?.close();
+    }
+  };
+
+  const handleDownloadClick = (sale: Sale, type: 'boleta' | 'factura' = 'boleta') => {
+    setSelectedSale(sale);
+    setInvoiceType(type);
+
+    // Espera a que el comprobante se renderice
+    setTimeout(() => {
+      if (printRef.current) {
+        html2pdf()
+          .set({ filename: `${type}-${sale.saleNumber}.pdf` })
+          .from(printRef.current)
+          .save();
+      }
+    }, 300);
+  };
 
   return (
     <div className="space-y-6">
@@ -184,11 +227,27 @@ export function SalesList() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex items-center space-x-2">
-                      <button className="text-blue-600 hover:text-blue-800 p-1 hover:bg-blue-50 rounded">
+                      <button
+                        className="text-blue-600 hover:text-blue-800 p-1 hover:bg-blue-50 rounded"
+                        onClick={() => handleViewClick(sale)}
+                        title="Ver venta"
+                      >
                         <Eye className="h-4 w-4" />
                       </button>
-                      <button className="text-green-600 hover:text-green-800 p-1 hover:bg-green-50 rounded">
+                      {/* Botón de descargar */}
+                      <button
+                        className="text-green-600 hover:text-green-800 p-1 hover:bg-green-50 rounded"
+                        onClick={() => handleDownloadClick(sale)}
+                        title="Descargar comprobante"
+                      >
                         <Download className="h-4 w-4" />
+                      </button>
+                      <button
+                        className="text-gray-600 hover:text-gray-800 p-1 hover:bg-gray-50 rounded"
+                        onClick={() => handlePrintClick(sale)}
+                        title="Imprimir comprobante"
+                      >
+                        <Printer className="h-4 w-4" />
                       </button>
                     </div>
                   </td>
@@ -202,6 +261,73 @@ export function SalesList() {
           <div className="text-center py-12">
             <Receipt className="h-12 w-12 text-gray-300 mx-auto mb-4" />
             <p className="text-gray-500">No se encontraron ventas</p>
+          </div>
+        )}
+      </div>
+
+      {/* Print Modal */}
+      {printModalOpen && selectedSale && (
+        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-96">
+            <h3 className="text-lg font-semibold mb-4">Imprimir Comprobante</h3>
+            <div className="mb-4">
+              <label className="block mb-2 text-sm font-medium">Tipo:</label>
+              <select
+                value={invoiceType}
+                onChange={e => setInvoiceType(e.target.value as 'boleta' | 'factura')}
+                className="w-full border rounded px-2 py-1"
+              >
+                <option value="boleta">Boleta</option>
+                <option value="factura">Factura</option>
+              </select>
+            </div>
+            <div className="border p-2 mb-4 bg-gray-50">
+              <div ref={printRef}>
+                <PrintableInvoice sale={selectedSale} type={invoiceType} />
+              </div>
+            </div>
+            <div className="flex justify-end space-x-2">
+              <button className="px-4 py-2 bg-gray-200 rounded" onClick={() => setPrintModalOpen(false)}>Cerrar</button>
+              <button className="px-4 py-2 bg-blue-600 text-white rounded" onClick={handlePrint}>Imprimir</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de vista */}
+      {viewModalOpen && selectedSale && (
+        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-96">
+            <h3 className="text-lg font-semibold mb-4">Detalle de Venta</h3>
+            <div className="mb-4">
+              <div><b>N° Venta:</b> {selectedSale.saleNumber}</div>
+              <div><b>Cliente:</b> {selectedSale.customerName || 'Cliente general'}</div>
+              <div><b>Fecha:</b> {new Date(selectedSale.createdAt).toLocaleString('es-ES')}</div>
+              <div><b>Total:</b> S/ {selectedSale.total.toFixed(2)}</div>
+              <div><b>Pago:</b> {selectedSale.paymentMethod}</div>
+              <div className="mt-2">
+                <b>Productos:</b>
+                <ul className="list-disc ml-4">
+                  {selectedSale.items.map((item: any) => (
+                    <li key={item.id}>
+                      {item.name} x {item.quantity} - S/ {(item.price * item.quantity).toFixed(2)}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+            <div className="flex justify-end">
+              <button className="px-4 py-2 bg-gray-200 rounded" onClick={() => setViewModalOpen(false)}>Cerrar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Comprobante invisible para descargar */}
+      <div style={{ display: 'none' }}>
+        {selectedSale && (
+          <div ref={printRef}>
+            <PrintableInvoice sale={selectedSale} type={invoiceType} />
           </div>
         )}
       </div>

@@ -41,7 +41,20 @@ export function SalesModule() {
 
       {/* Content */}
       <div>
-        {activeTab === 'pos' && <PointOfSale />}
+        {activeTab === 'pos' && (
+          <div>
+            <PointOfSale />
+            <div className="mt-4 flex space-x-2">
+              <button
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-blue-700"
+                onClick={() => window.dispatchEvent(new CustomEvent('openInvoiceModal'))}
+              >
+                <Plus className="h-4 w-4" />
+                <span>Generar Factura/Boleta</span>
+              </button>
+            </div>
+          </div>
+        )}
         {activeTab === 'list' && <SalesList />}
       </div>
     </div>

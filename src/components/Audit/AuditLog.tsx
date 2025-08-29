@@ -33,42 +33,11 @@ export function AuditLog() {
 
   // In a real app, audit logs would come from the backend
   useEffect(() => {
-    // Simulate some audit entries
-    const mockEntries: AuditEntry[] = [
-      {
-        id: '1',
-        timestamp: new Date().toISOString(),
-        userId: '1',
-        username: 'admin',
-        action: 'CREATE',
-        entity: 'product',
-        entityId: 'PRD001',
-        details: 'Nuevo producto agregado: Coca Cola 500ml',
-      },
-      {
-        id: '2',
-        timestamp: new Date(Date.now() - 3600000).toISOString(),
-        userId: '2',
-        username: 'vendedor',
-        action: 'UPDATE',
-        entity: 'product',
-        entityId: 'PRD001',
-        details: 'Stock actualizado de 50 a 45 unidades',
-        oldValue: { stock: 50 },
-        newValue: { stock: 45 },
-      },
-      {
-        id: '3',
-        timestamp: new Date(Date.now() - 7200000).toISOString(),
-        userId: '3',
-        username: 'supervisor',
-        action: 'CREATE',
-        entity: 'sale',
-        entityId: 'V-001',
-        details: 'Nueva venta registrada por S/ 25.50',
-      },
-    ];
-    setAuditEntries(mockEntries);
+    // Ejemplo usando fetch
+    fetch('/api/audit-logs')
+      .then(res => res.json())
+      .then(data => setAuditEntries(data))
+      .catch(() => setAuditEntries([]));
   }, []);
 
   const filteredEntries = auditEntries.filter(entry => {
@@ -182,55 +151,27 @@ export function AuditLog() {
       {/* Audit Entries */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
         <div className="divide-y divide-gray-200">
-          {filteredEntries.map(entry => {
-            const EntityIcon = getEntityIcon(entry.entity);
-            
-            return (
-              <div key={entry.id} className="p-6 hover:bg-gray-50">
-                <div className="flex items-start space-x-4">
-                  <div className="flex-shrink-0">
-                    <div className="bg-blue-100 p-2 rounded-full">
-                      <EntityIcon className="h-5 w-5 text-blue-600" />
-                    </div>
+          {filteredEntries.map(entry => (
+            <div key={entry.id} className="bg-white rounded-lg shadow p-4 mb-2 border border-gray-200">
+              <div className="flex justify-between items-center mb-2">
+                <div>
+                  <span className="font-semibold">{entry.username}</span> realizó <span className="font-semibold">{entry.action}</span> en <span className="font-semibold">{entry.entity}</span>
+                </div>
+                <div className="text-xs text-gray-500">{new Date(entry.timestamp).toLocaleString('es-PE')}</div>
+              </div>
+              <div className="text-sm text-gray-700 mb-1">{entry.details}</div>
+              {(entry.action === 'UPDATE' || entry.action === 'DELETE') && (
+                <div className="text-xs text-gray-600">
+                  <div>
+                    <b>Antes:</b> {entry.oldValue ? JSON.stringify(entry.oldValue) : 'N/A'}
                   </div>
-                  
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getActionColor(entry.action)}`}>
-                          {entry.action}
-                        </span>
-                        <span className="text-sm font-medium text-gray-900 capitalize">
-                          {entry.entity}
-                        </span>
-                        <span className="text-sm text-gray-500">#{entry.entityId}</span>
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        {new Date(entry.timestamp).toLocaleString('es-ES')}
-                      </div>
-                    </div>
-                    
-                    <p className="mt-2 text-sm text-gray-700">{entry.details}</p>
-                    
-                    <div className="mt-2 flex items-center space-x-4">
-                      <div className="flex items-center space-x-1">
-                        <User className="h-3 w-3 text-gray-400" />
-                        <span className="text-xs text-gray-500">{entry.username}</span>
-                      </div>
-                      
-                      {entry.oldValue && entry.newValue && (
-                        <div className="text-xs text-gray-500">
-                          <span className="text-red-600">Anterior: {JSON.stringify(entry.oldValue)}</span>
-                          <span className="mx-2">→</span>
-                          <span className="text-green-600">Nuevo: {JSON.stringify(entry.newValue)}</span>
-                        </div>
-                      )}
-                    </div>
+                  <div>
+                    <b>Después:</b> {entry.newValue ? JSON.stringify(entry.newValue) : 'N/A'}
                   </div>
                 </div>
-              </div>
-            );
-          })}
+              )}
+            </div>
+          ))}
           
           {filteredEntries.length === 0 && (
             <div className="text-center py-12">

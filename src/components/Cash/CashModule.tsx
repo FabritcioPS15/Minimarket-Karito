@@ -18,15 +18,22 @@ export function CashModule() {
   const [showOpenDialog, setShowOpenDialog] = useState(false);
   const [showCloseDialog, setShowCloseDialog] = useState(false);
 
-  const todaysSales = sales.filter(sale => {
-    if (!currentCashSession) return false;
-    const saleDate = new Date(sale.createdAt);
-    const sessionStart = new Date(currentCashSession.startTime);
-    return saleDate >= sessionStart;
-  });
+  // Función para obtener las ventas de una sesión específica
+  const getSessionSales = (session: CashSession) => {
+    return sales.filter(sale => {
+      const saleDate = new Date(sale.createdAt);
+      const sessionStart = new Date(session.startTime);
+      const sessionEnd = session.endTime ? new Date(session.endTime) : new Date();
+      
+      return saleDate >= sessionStart && saleDate <= sessionEnd;
+    });
+  };
 
-  const cashSales = todaysSales.filter(sale => sale.paymentMethod === 'cash');
+  // Ventas de la sesión actual
+  const sessionSales = currentCashSession ? getSessionSales(currentCashSession) : [];
+  const cashSales = sessionSales.filter(sale => sale.paymentMethod === 'cash');
   const totalCashSales = cashSales.reduce((sum, sale) => sum + sale.total, 0);
+  const totalSessionSales = sessionSales.reduce((sum, sale) => sum + (sale.total ?? 0), 0);
   const expectedCash = (currentCashSession?.startAmount || 0) + totalCashSales;
 
   const handleOpenSession = () => {
@@ -53,7 +60,18 @@ export function CashModule() {
 
   const handleCloseSession = () => {
     if (currentCashSession) {
+      // Calcular el total de ventas para esta sesión
+      const sessionSalesTotal = sessionSales.reduce((sum, sale) => sum + sale.total, 0);
+      
+      const closedSession: CashSession = {
+        ...currentCashSession,
+        endTime: new Date().toISOString(),
+        totalSales: sessionSalesTotal, // Guardar el total de ventas
+        status: 'closed'
+      };
+
       dispatch({ type: 'END_CASH_SESSION' });
+      dispatch({ type: 'ADD_CASH_SESSION_HISTORY', payload: closedSession });
       setShowCloseDialog(false);
     }
   };
@@ -142,7 +160,7 @@ export function CashModule() {
 
           <div className="text-center py-4">
             <p className="text-sm text-gray-600">
-              Total de ventas realizadas: <span className="font-semibold">{todaysSales.length}</span>
+              Total de ventas realizadas: <span className="font-semibold">{sessionSales.length}</span>
             </p>
           </div>
         </div>
@@ -246,7 +264,7 @@ export function CashModule() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Ventas Totales</p>
-                <p className="text-2xl font-bold text-gray-900">{todaysSales.length}</p>
+                <p className="text-2xl font-bold text-gray-900">{sessionSales.length}</p>
               </div>
               <TrendingUp className="h-8 w-8 text-green-600" />
             </div>
@@ -277,12 +295,12 @@ export function CashModule() {
       )}
 
       {/* Payment Methods Breakdown */}
-      {currentCashSession && todaysSales.length > 0 && (
+      {currentCashSession && sessionSales.length > 0 && (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Resumen por Método de Pago</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {['cash', 'card', 'transfer', 'yape', 'plin', 'other'].map(method => {
-              const methodSales = todaysSales.filter(sale => sale.paymentMethod === method);
+              const methodSales = sessionSales.filter(sale => sale.paymentMethod === method);
               const methodTotal = methodSales.reduce((sum, sale) => sum + sale.total, 0);
               
               if (methodSales.length === 0) return null;
@@ -329,7 +347,7 @@ export function CashModule() {
                   Efectivo Inicial
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Ventas
+                  Total Ventas
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Duración
@@ -348,6 +366,11 @@ export function CashModule() {
                   const duration = session.endTime ? 
                     Math.floor((new Date(session.endTime).getTime() - new Date(session.startTime).getTime()) / (1000 * 60 * 60)) : 0;
                   
+                  // Para sesiones antiguas que no tienen totalSales, calcularlo
+                  const sessionTotalSales = session.totalSales > 0 ? 
+                    session.totalSales : 
+                    getSessionSales(session).reduce((sum, sale) => sum + sale.total, 0);
+                  
                   return (
                     <tr key={session.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -365,7 +388,7 @@ export function CashModule() {
                         S/ {session.startAmount.toFixed(2)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        S/ {session.totalSales.toFixed(2)}
+                        S/ {sessionTotalSales.toFixed(2)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {duration}h

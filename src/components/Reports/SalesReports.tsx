@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
 import { 
-  BarChart, 
+  BarChart,
   Bar, 
   XAxis, 
   YAxis, 
@@ -12,7 +12,7 @@ import {
   Pie,
   Cell
 } from 'recharts';
-import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, Calendar } from 'lucide-react';
+import { TrendingUp,BarChart3, TrendingDown, DollarSign, ShoppingCart, Calendar } from 'lucide-react';
 
 export function SalesReports() {
   const { state } = useApp();
@@ -21,35 +21,24 @@ export function SalesReports() {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 7));
 
   const salesData = useMemo(() => {
-    const filteredSales = sales.filter(sale => {
-      const saleDate = new Date(sale.createdAt);
-      const selected = new Date(selectedDate + '-01');
-      
-      switch (period) {
-        case 'monthly':
-          return saleDate.getMonth() === selected.getMonth() && 
-                 saleDate.getFullYear() === selected.getFullYear();
-        case 'quarterly':
-          const quarter = Math.floor(selected.getMonth() / 3);
-          const saleQuarter = Math.floor(saleDate.getMonth() / 3);
-          return saleQuarter === quarter && saleDate.getFullYear() === selected.getFullYear();
-        case 'yearly':
-          return saleDate.getFullYear() === selected.getFullYear();
-        default:
-          return true;
-      }
-    });
-
+    const filteredSales = sales;
     // Most sold products
     const productSales = new Map<string, { name: string; quantity: number; revenue: number }>();
     
     filteredSales.forEach(sale => {
       sale.items.forEach(item => {
-        const existing = productSales.get(item.productId) || { name: item.productName, quantity: 0, revenue: 0 };
+        const product = products.find(p => p.id === item.productId);
+        const name = item.name ?? item.productName ?? product?.name ?? 'Producto';
+        const price = item.price ?? item.unitPrice ?? product?.salePrice ?? 0;
+        const existing = productSales.get(item.productId) || { 
+          name, // <-- usa ambos
+          quantity: 0, 
+          revenue: 0 
+        };
         productSales.set(item.productId, {
-          name: item.productName,
+          name, // <-- usa ambos
           quantity: existing.quantity + item.quantity,
-          revenue: existing.revenue + item.total,
+          revenue: existing.revenue + (item.total ?? price * item.quantity),
         });
       });
     });
@@ -227,6 +216,7 @@ export function SalesReports() {
                   <div>
                     <p className="font-medium text-gray-900">{product.name}</p>
                     <p className="text-sm text-gray-500">{product.quantity} unidades</p>
+                    <p className="font-semibold text-gray-900">S/ {product.revenue.toFixed(2)}</p>
                   </div>
                 </div>
                 <div className="text-right">
@@ -256,6 +246,7 @@ export function SalesReports() {
                   <div>
                     <p className="font-medium text-gray-900">{product.name}</p>
                     <p className="text-sm text-gray-500">{product.quantity} unidades</p>
+                    <p className="font-semibold text-gray-900">S/ {product.revenue.toFixed(2)}</p>
                   </div>
                 </div>
                 <div className="text-right">
@@ -267,6 +258,45 @@ export function SalesReports() {
               <p className="text-center text-gray-500 py-4">No hay datos de productos</p>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* Sales Table */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Detalle de Ventas</h3>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">#</th>
+                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">Cliente</th>
+                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">Fecha</th>
+                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">Total</th>
+                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">Pago</th>
+                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">Productos</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {sales.map(sale => (
+                <tr key={sale.id}>
+                  <td>{sale.saleNumber}</td>
+                  <td>{sale.customerName || 'Cliente general'}</td>
+                  <td>{new Date(sale.createdAt).toLocaleString('es-PE')}</td>
+                  <td>S/ {sale.total.toFixed(2)}</td>
+                  <td>{sale.paymentMethod}</td>
+                  <td>
+                    <ul className="list-disc ml-4">
+                      {sale.items.map((item: any) => (
+                        <li key={item.id}>
+                          {item.name ?? item.productName} x {item.quantity} - S/ {(item.price ?? item.unitPrice ?? 0).toFixed(2)}
+                        </li>
+                      ))}
+                    </ul>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

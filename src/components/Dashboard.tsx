@@ -16,21 +16,52 @@ export function Dashboard() {
 
   const totalProducts = products.length;
   const lowStockProducts = products.filter(p => p.currentStock <= p.minStock).length;
-  const expiringSoonProducts = products.filter(p => {
-    if (!p.expirationDate) return false;
-    const expirationDate = new Date(p.expirationDate);
-    const thirtyDaysFromNow = new Date();
-    thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
-    return expirationDate <= thirtyDaysFromNow;
-  }).length;
-
   const todaysSales = sales.filter(sale => {
     const today = new Date().toDateString();
     return new Date(sale.createdAt).toDateString() === today;
   });
 
   const todaysRevenue = todaysSales.reduce((total, sale) => total + sale.total, 0);
-  const unreadAlerts = alerts.filter(alert => !alert.isRead).length;
+
+  // Generar alertas adicionales
+  const lowStockAlerts = products
+    .filter(p => p.currentStock <= p.minStock)
+    .map(p => ({
+      id: `lowstock-${p.id}`,
+      productName: p.name,
+      message: `Stock bajo (${p.currentStock} unidades)`,
+      severity: 'high',
+      createdAt: p.updatedAt || new Date(),
+      isRead: false,
+      type: 'lowstock'
+    }));
+
+  const expiringSoonAlerts = products
+    .filter(p => {
+      if (!p.expirationDate) return false;
+      const expirationDate = new Date(p.expirationDate);
+      const thirtyDaysFromNow = new Date();
+      thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+      return expirationDate <= thirtyDaysFromNow;
+    })
+    .map(p => ({
+      id: `expire-${p.id}`,
+      productName: p.name,
+      message: `Por vencer el ${new Date(p.expirationDate).toLocaleDateString('es-ES')}`,
+      severity: 'medium',
+      createdAt: p.expirationDate,
+      isRead: false,
+      type: 'expire'
+    }));
+
+  // Unir todas las alertas
+  const allAlerts = [
+    ...lowStockAlerts,
+    ...expiringSoonAlerts,
+    ...alerts
+  ];
+
+  const unreadAlerts = allAlerts.filter(alert => !alert.isRead).length;
 
   const recentSales = sales
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
@@ -158,8 +189,8 @@ export function Dashboard() {
             )}
           </div>
           <div className="space-y-3">
-            {alerts.length > 0 ? (
-              alerts.slice(0, 5).map(alert => (
+            {allAlerts.length > 0 ? (
+              allAlerts.slice(0, 5).map(alert => (
                 <div key={alert.id} className={`p-3 rounded-lg border ${!alert.isRead ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200'}`}>
                   <div className="flex items-start">
                     <AlertTriangle className={`h-4 w-4 mt-0.5 mr-2 ${alert.severity === 'high' ? 'text-red-500' : alert.severity === 'medium' ? 'text-orange-500' : 'text-yellow-500'}`} />

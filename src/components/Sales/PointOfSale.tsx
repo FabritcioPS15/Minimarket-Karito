@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Product, Sale, SaleItem, PaymentMethod } from '../../types';
 import { 
@@ -13,6 +13,47 @@ import {
   Receipt,
   Calculator
 } from 'lucide-react';
+import { PrintableInvoice } from './PrintableInvoice';
+
+export function InvoiceModal({ open, onClose, onPrint, sale, type, setType }: any) {
+  const printRef = useRef<HTMLDivElement>(null);
+
+  const handlePrint = () => {
+    if (printRef.current) {
+      const printContents = printRef.current.innerHTML;
+      const win = window.open('', '', 'width=400,height=600');
+      win?.document.write(`<html><head><title>Imprimir</title></head><body>${printContents}</body></html>`);
+      win?.document.close();
+      win?.focus();
+      win?.print();
+      win?.close();
+    }
+  };
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 w-96">
+        <h3 className="text-lg font-semibold mb-4">Generar Comprobante</h3>
+        <div className="mb-4">
+          <label className="block mb-2 text-sm font-medium">Tipo:</label>
+          <select value={type} onChange={e => setType(e.target.value)} className="w-full border rounded px-2 py-1">
+            <option value="boleta">Boleta</option>
+            <option value="factura">Factura</option>
+          </select>
+        </div>
+        <div className="border p-2 mb-4 bg-gray-50">
+          <PrintableInvoice ref={printRef} sale={sale} type={type} />
+        </div>
+        <div className="flex justify-end space-x-2">
+          <button className="px-4 py-2 bg-gray-200 rounded" onClick={onClose}>Cancelar</button>
+          <button className="px-4 py-2 bg-blue-600 text-white rounded" onClick={handlePrint}>Imprimir</button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function PointOfSale() {
   const { state, dispatch } = useApp();
@@ -23,41 +64,43 @@ export function PointOfSale() {
   const [operationNumber, setOperationNumber] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerDocument, setCustomerDocument] = useState('');
+  const [invoiceOpen, setInvoiceOpen] = useState(false);
+  const [invoiceType, setInvoiceType] = useState<'boleta' | 'factura'>('boleta');
+  const [currentSale, setCurrentSale] = useState<any>(null);
+
+  useEffect(() => {
+    const handler = () => setInvoiceOpen(true);
+    window.addEventListener('openInvoiceModal', handler);
+    return () => window.removeEventListener('openInvoiceModal', handler);
+  }, []);
 
   const filteredProducts = products.filter(product =>
     product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     product.code.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const subtotal = cart.reduce((sum, item) => sum + item.total, 0);
+  const subtotal = cart.reduce((sum, item) => sum + ((item.price ?? 0) * (item.quantity ?? 0)), 0);
   const tax = subtotal * 0.18; // 18% IGV
   const total = subtotal + tax;
 
   const addToCart = (product: Product) => {
-    if (product.currentStock <= 0) {
-      alert('Producto sin stock disponible');
+    // Verifica si ya está en el carrito
+    const existing = cart.find(item => item.productId === product.id);
+    if (existing) {
+      updateQuantity(existing.id, existing.quantity + 1);
       return;
     }
-
-    const existingItem = cart.find(item => item.productId === product.id);
-    
-    if (existingItem) {
-      if (existingItem.quantity >= product.currentStock) {
-        alert('No hay suficiente stock para agregar más unidades');
-        return;
-      }
-      updateQuantity(existingItem.id, existingItem.quantity + 1);
-    } else {
-      const newItem: SaleItem = {
+    setCart([
+      ...cart,
+      {
         id: Date.now().toString(),
         productId: product.id,
-        productName: product.name,
+        name: product.name, // <-- nombre del producto
+        price: product.salePrice, // <-- precio de venta
         quantity: 1,
-        unitPrice: product.salePrice,
         total: product.salePrice,
-      };
-      setCart([...cart, newItem]);
-    }
+      }
+    ]);
   };
 
   const updateQuantity = (itemId: string, newQuantity: number) => {
@@ -109,11 +152,26 @@ export function PointOfSale() {
     }
 
     const saleNumber = `V-${Date.now()}`;
-    
+
+    // Reconstruye los items del carrito con nombre y precio
+    const saleItems = cart.map(item => {
+      const product = products.find(p => p.id === item.productId);
+      return {
+        ...item,
+        name: item.name ?? product?.name ?? '',
+        price: item.price ?? product?.salePrice ?? 0,
+        total: (item.price ?? product?.salePrice ?? 0) * (item.quantity ?? 1),
+      };
+    });
+
+    const subtotal = saleItems.reduce((sum, item) => sum + item.total, 0);
+    const tax = subtotal * 0.18;
+    const total = subtotal + tax;
+
     const sale: Sale = {
       id: Date.now().toString(),
       saleNumber,
-      items: cart,
+      items: saleItems,
       subtotal,
       tax,
       total,
@@ -126,7 +184,7 @@ export function PointOfSale() {
       createdBy: currentUser?.id || '',
     };
 
-    // Update product stock and add kardex entries
+    // Actualiza stock y kardex
     cart.forEach(item => {
       const product = products.find(p => p.id === item.productId);
       if (product) {
@@ -137,7 +195,6 @@ export function PointOfSale() {
         };
         dispatch({ type: 'UPDATE_PRODUCT', payload: updatedProduct });
 
-        // Add kardex entry
         dispatch({
           type: 'ADD_KARDEX_ENTRY',
           payload: {
@@ -157,9 +214,11 @@ export function PointOfSale() {
     });
 
     dispatch({ type: 'ADD_SALE', payload: sale });
-    clearCart();
-    alert('Venta procesada exitosamente');
+
+    setCurrentSale(sale);
+    setInvoiceOpen(true);
   };
+
 
   const paymentMethods = [
     { id: 'cash', label: 'Efectivo', icon: DollarSign },
@@ -231,35 +290,35 @@ export function PointOfSale() {
         <div className="p-4">
           {/* Cart Items */}
           <div className="space-y-3 max-h-64 overflow-y-auto">
-            {cart.map(item => (
-              <div key={item.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                <div className="flex-1">
-                  <h4 className="text-sm font-medium text-gray-900">{item.productName}</h4>
-                  <p className="text-xs text-gray-500">S/ {item.unitPrice.toFixed(2)} c/u</p>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                    className="p-1 text-gray-500 hover:text-red-600"
-                  >
-                    <Minus className="h-3 w-3" />
-                  </button>
-                  <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
-                  <button
-                    onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                    className="p-1 text-gray-500 hover:text-blue-600"
-                  >
-                    <Plus className="h-3 w-3" />
-                  </button>
-                  <button
-                    onClick={() => removeFromCart(item.id)}
-                    className="p-1 text-gray-500 hover:text-red-600 ml-2"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </button>
-                </div>
-              </div>
-            ))}
+{cart.map(item => (
+  <div key={item.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+    <div className="flex-1">
+      <h4 className="text-sm font-medium text-gray-900">{item.name}</h4> {/* <-- aquí */}
+      <p className="text-xs text-gray-500">S/ {(item.price ?? 0).toFixed(2)} c/u</p> {/* <-- aquí */}
+    </div>
+    <div className="flex items-center space-x-2">
+      <button
+        onClick={() => updateQuantity(item.id, item.quantity - 1)}
+        className="p-1 text-gray-500 hover:text-red-600"
+      >
+        <Minus className="h-3 w-3" />
+      </button>
+      <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
+      <button
+        onClick={() => updateQuantity(item.id, item.quantity + 1)}
+        className="p-1 text-gray-500 hover:text-blue-600"
+      >
+        <Plus className="h-3 w-3" />
+      </button>
+      <button
+        onClick={() => removeFromCart(item.id)}
+        className="p-1 text-gray-500 hover:text-red-600 ml-2"
+      >
+        <Trash2 className="h-3 w-3" />
+      </button>
+    </div>
+  </div>
+))}
             
             {cart.length === 0 && (
               <div className="text-center py-8 text-gray-500">
@@ -377,6 +436,14 @@ export function PointOfSale() {
           </div>
         </div>
       </div>
+
+      <InvoiceModal
+        open={invoiceOpen}
+        onClose={() => setInvoiceOpen(false)}
+        sale={currentSale}
+        type={invoiceType}
+        setType={setInvoiceType}
+      />
     </div>
   );
 }
