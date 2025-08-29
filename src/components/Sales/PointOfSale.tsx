@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { PrintableInvoice } from './PrintableInvoice';
 
-export function InvoiceModal({ open, onClose, onPrint, sale, type, setType }: any) {
+export function InvoiceModal({ open, onClose, sale, type, setType }: any) {
   const printRef = useRef<HTMLDivElement>(null);
 
   const handlePrint = () => {

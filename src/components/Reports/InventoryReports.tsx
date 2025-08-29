@@ -5,7 +5,6 @@ import {
   AlertTriangle, 
   TrendingUp, 
   Calendar,
-  BarChart3
 } from 'lucide-react';
 
 export function InventoryReports() {

@@ -13,7 +13,6 @@ import {
   Scan,
   Filter,
   Eye,
-  Image
 } from 'lucide-react';
 
 export function ProductList() {

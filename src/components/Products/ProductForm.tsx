@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Product } from '../../types';
-import { ArrowLeft, Package, Save, Calculator, Image, Eye } from 'lucide-react';
+import { ArrowLeft, Package, Save, Calculator, Eye } from 'lucide-react';
 
 interface ProductFormProps {
   product?: Product | null;
